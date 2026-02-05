@@ -1,0 +1,56 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: multidb-flowable
+
+  # Disable default single-datasource auto-config (we define 3 datasources manually)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+
+# Flowable: process engine only, use primary datasource (configured in Java)
+flowable:
+  process:
+    database-schema-update: true
+  # Disable other engines if present (we want process only)
+  async-executor-activate: true
+
+# 3 H2 datasources (manual config – no spring.datasource)
+app:
+  datasource:
+    primary:
+      jdbc-url: jdbc:h2:mem:primary;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=LEGACY
+      username: sa
+      password:
+      driver-class-name: org.h2.Driver
+      pool-name: primary-pool
+    reporting:
+      jdbc-url: jdbc:h2:mem:reporting;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=LEGACY
+      username: sa
+      password:
+      driver-class-name: org.h2.Driver
+      pool-name: reporting-pool
+    audit:
+      jdbc-url: jdbc:h2:mem:audit;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=LEGACY
+      username: sa
+      password:
+      driver-class-name: org.h2.Driver
+      pool-name: audit-pool
+
+# Flowable sanity check: should see "Using datasource [HikariDataSource (primary-pool)] for Flowable"
+logging:
+  level:
+    com.acme: DEBUG
+    org.flowable: INFO
+    org.flowable.engine.impl.cfg: DEBUG

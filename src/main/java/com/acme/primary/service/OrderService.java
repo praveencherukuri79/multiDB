@@ -1,0 +1,37 @@
+package com.acme.primary.service;
+
+import com.acme.primary.entity.OrderEntity;
+import com.acme.primary.repo.OrderRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+
+@Service
+@RequiredArgsConstructor
+@Transactional("primaryTxManager")
+public class OrderService {
+
+  private final OrderRepository orderRepository;
+
+  public OrderEntity createOrder(String orderNo, Long customerId, BigDecimal totalAmount) {
+    if (orderRepository.existsByOrderNo(orderNo)) {
+      throw new IllegalStateException("Order already exists: " + orderNo);
+    }
+    OrderEntity entity = OrderEntity.builder()
+        .orderNo(orderNo)
+        .customerId(customerId)
+        .totalAmount(totalAmount)
+        .createdAt(Instant.now())
+        .build();
+    return orderRepository.save(entity);
+  }
+
+  @Transactional(readOnly = true)
+  public OrderEntity getByOrderNo(String orderNo) {
+    return orderRepository.findByOrderNo(orderNo)
+        .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderNo));
+  }
+}

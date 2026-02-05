@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MultiDB + Flowable – Test curls (POST)</title>
+  <style>
+    :root { --bg: #1a1b26; --fg: #a9b1d6; --accent: #7aa2f7; --muted: #565f89; }
+    * { box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', 'Fira Code', monospace; background: var(--bg); color: var(--fg); margin: 0; padding: 1.5rem; line-height: 1.5; }
+    h1 { color: var(--accent); font-size: 1.25rem; margin-top: 0; }
+    h2 { color: var(--muted); font-size: 1rem; margin: 1.5rem 0 0.5rem; }
+    pre { background: #16161e; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; border: 1px solid var(--muted); }
+    code { color: var(--accent); }
+    .note { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>MultiDB + Flowable – POST test curls</h1>
+  <p class="note">Base URL: <code>http://localhost:8080</code>. Run these after starting the app.</p>
+
+  <h2>1. Primary DB – Create order (POST)</h2>
+  <pre>curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d "{\"orderNo\":\"ORD-001\",\"customerId\":1001,\"totalAmount\":99.50}"</pre>
+
+  <h2>2. Reporting DB – Upsert daily sales (POST)</h2>
+  <pre>curl -X POST http://localhost:8080/api/reporting/daily-sales \
+  -H "Content-Type: application/json" \
+  -d "{\"date\":\"2025-02-05\",\"ordersCount\":42,\"grossAmount\":12500.00}"</pre>
+
+  <h2>3. Audit DB – Write audit event (POST)</h2>
+  <pre>curl -X POST http://localhost:8080/api/audit/events \
+  -H "Content-Type: application/json" \
+  -d "{\"eventType\":\"ORDER_CREATED\",\"actor\":\"system\",\"subjectId\":\"ORD-001\",\"payloadJson\":\"{}\"}"</pre>
+
+  <h2>4. Flowable – Deploy process (POST)</h2>
+  <pre>curl -X POST http://localhost:8080/api/flowable/deploy</pre>
+
+  <h2>5. Flowable – Start process instance (POST)</h2>
+  <pre>curl -X POST http://localhost:8080/api/flowable/process/start \
+  -H "Content-Type: application/json" \
+  -d "{\"processKey\":\"demoProcess\"}"</pre>
+
+  <p class="note">GET checks: <code>/api/orders/ORD-001</code>, <code>/api/reporting/daily-sales/2025-02-05</code>, <code>/api/audit/events/system</code>, <code>/api/flowable/deployments</code>, <code>/api/flowable/process/instances</code></p>
+</body>
+</html>

@@ -1,0 +1,227 @@
+/*
+============================================================
+GOAL
+- 3 DBs: PRIMARY + REPORTING + AUDIT
+- Flowable MUST use PRIMARY
+- JPA split across 3 config files (one per DB)
+- Each service talks to exactly ONE DB (your rule)
+
+REQUIRES
+- Flowable Spring Boot starter on classpath (gives @FlowableDataSource):
+  import org.flowable.spring.boot.FlowableDataSource;
+============================================================
+*/
+
+/* ============================================================
+   File: com/acme/config/PrimaryJpaConfig.java
+   PRIMARY DB (ALSO Flowable DB)
+   ============================================================ */
+
+package com.acme.config;
+
+import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
+
+import org.flowable.spring.boot.FlowableDataSource;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(
+  basePackages = "com.acme.primary.repo",
+  entityManagerFactoryRef = "primaryEmf",
+  transactionManagerRef = "primaryTxManager"
+)
+@EntityScan(basePackages = "com.acme.primary.entity")
+public class PrimaryJpaConfig {
+
+  /**
+   * IMPORTANT:
+   * - Qualifier MUST match the primary DataSource bean name you created.
+   *   If you followed the earlier setup, your primary DS bean name is "dataSource".
+   * - @FlowableDataSource forces Flowable to use this DS, even when 3 DS exist.
+   */
+  @Bean
+  @Primary
+  public LocalContainerEntityManagerFactoryBean primaryEmf(
+      EntityManagerFactoryBuilder builder,
+      @Qualifier("dataSource") @FlowableDataSource DataSource primaryFlowableDataSource) {
+
+    return builder
+      .dataSource(primaryFlowableDataSource)
+      .packages("com.acme.primary.entity")
+      .persistenceUnit("primaryPU")
+      .build();
+  }
+
+  @Bean
+  @Primary
+  public PlatformTransactionManager primaryTxManager(
+      @Qualifier("primaryEmf") EntityManagerFactory emf) {
+    return new JpaTransactionManager(emf);
+  }
+}
+
+
+/* ============================================================
+   File: com/acme/config/ReportingJpaConfig.java
+   REPORTING DB
+   ============================================================ */
+
+package com.acme.config;
+
+import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
+
+@Configuration
+@EnableJpaRepositories(
+  basePackages = "com.acme.reporting.repo",
+  entityManagerFactoryRef = "reportingEmf",
+  transactionManagerRef = "reportingTxManager"
+)
+@EntityScan(basePackages = "com.acme.reporting.entity")
+public class ReportingJpaConfig {
+
+  @Bean
+  public LocalContainerEntityManagerFactoryBean reportingEmf(
+      EntityManagerFactoryBuilder builder,
+      @Qualifier("reportingDataSource") DataSource ds) {
+
+    return builder
+      .dataSource(ds)
+      .packages("com.acme.reporting.entity")
+      .persistenceUnit("reportingPU")
+      .build();
+  }
+
+  @Bean
+  public PlatformTransactionManager reportingTxManager(
+      @Qualifier("reportingEmf") EntityManagerFactory emf) {
+    return new JpaTransactionManager(emf);
+  }
+}
+
+
+/* ============================================================
+   File: com/acme/config/AuditJpaConfig.java
+   AUDIT DB
+   ============================================================ */
+
+package com.acme.config;
+
+import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
+
+@Configuration
+@EnableJpaRepositories(
+  basePackages = "com.acme.audit.repo",
+  entityManagerFactoryRef = "auditEmf",
+  transactionManagerRef = "auditTxManager"
+)
+@EntityScan(basePackages = "com.acme.audit.entity")
+public class AuditJpaConfig {
+
+  @Bean
+  public LocalContainerEntityManagerFactoryBean auditEmf(
+      EntityManagerFactoryBuilder builder,
+      @Qualifier("auditDataSource") DataSource ds) {
+
+    return builder
+      .dataSource(ds)
+      .packages("com.acme.audit.entity")
+      .persistenceUnit("auditPU")
+      .build();
+  }
+
+  @Bean
+  public PlatformTransactionManager auditTxManager(
+      @Qualifier("auditEmf") EntityManagerFactory emf) {
+    return new JpaTransactionManager(emf);
+  }
+}
+
+
+/* ============================================================
+   SERVICES (ONE SERVICE -> ONE DB)
+   Put @Transactional at class level so nobody “forgets”.
+   ============================================================ */
+
+package com.acme.primary.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional("primaryTxManager")
+public class OrderService {
+  private final com.acme.primary.repo.OrderRepository orderRepository;
+}
+
+package com.acme.reporting.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional("reportingTxManager")
+public class ReportingService {
+  private final com.acme.reporting.repo.ReportRepository reportRepository;
+}
+
+package com.acme.audit.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional("auditTxManager")
+public class AuditService {
+  private final com.acme.audit.repo.AuditEventRepository auditRepository;
+}
+
+
+/* ============================================================
+   NOTE (CRITICAL)
+   This code assumes your DataSource beans exist with these names:
+   - PRIMARY:    @Bean(name="dataSource") + @Primary + @FlowableDataSource
+   - REPORTING:  @Bean(name="reportingDataSource")
+   - AUDIT:      @Bean(name="auditDataSource")
+
+   If your DS bean names differ, update the @Qualifier strings.
+============================================================ */
