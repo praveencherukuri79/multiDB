@@ -9,4 +9,5 @@ import java.util.List;
 public interface AuditEventRepository extends JpaRepository<AuditEventEntity, Long> {
   List<AuditEventEntity> findTop50ByActorOrderByCreatedAtDesc(String actor);
   List<AuditEventEntity> findByCreatedAtBetweenOrderByCreatedAtDesc(Instant from, Instant to);
+  List<AuditEventEntity> findBySubjectId(String subjectId);
 }

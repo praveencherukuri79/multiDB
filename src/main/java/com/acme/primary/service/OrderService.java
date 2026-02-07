@@ -34,4 +34,34 @@ public class OrderService {
     return orderRepository.findByOrderNo(orderNo)
         .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderNo));
   }
+
+  /**
+   * Simplified order creation for orchestrator demo.
+   */
+  public OrderEntity createOrder(String customerName, String productName, BigDecimal amount) {
+    String orderNo = "ORD-" + System.currentTimeMillis();
+    OrderEntity entity = OrderEntity.builder()
+        .orderNo(orderNo)
+        .customerId(1L)  // Demo: fixed customer ID
+        .totalAmount(amount)
+        .createdAt(Instant.now())
+        .build();
+    return orderRepository.save(entity);
+  }
+
+  /**
+   * Delete order (for compensation).
+   */
+  public void deleteOrder(Long orderId) {
+    orderRepository.deleteById(orderId);
+  }
+
+  /**
+   * Get order by ID.
+   */
+  @Transactional(readOnly = true)
+  public OrderEntity getOrderById(Long orderId) {
+    return orderRepository.findById(orderId)
+        .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+  }
 }

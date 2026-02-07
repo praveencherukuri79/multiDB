@@ -1,7 +1,6 @@
 package com.acme.config;
 
 import jakarta.persistence.EntityManagerFactory;
-import com.acme.config.FlowableDataSource;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder;
@@ -28,16 +27,16 @@ public class PrimaryJpaConfig {
 
   /**
    * Qualifier MUST match the primary DataSource bean name ("dataSource").
-   * @FlowableDataSource forces Flowable 7.x to use this DS when multiple exist.
+   * This is also the DataSource used by Flowable (via @Primary).
    */
   @Bean(name = "primaryEmf")
   @Primary
   public LocalContainerEntityManagerFactoryBean primaryEmf(
       EntityManagerFactoryBuilder builder,
-      @Qualifier("dataSource") @FlowableDataSource DataSource primaryFlowableDataSource) {
+      @Qualifier("dataSource") DataSource primaryDataSource) {
 
     return builder
-        .dataSource(primaryFlowableDataSource)
+        .dataSource(primaryDataSource)
         .packages("com.acme.primary.entity")
         .persistenceUnit("primaryPU")
         .build();

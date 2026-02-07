@@ -29,4 +29,22 @@ public class ReportingService {
     return dailySalesRepository.findBySalesDate(date)
         .orElseThrow(() -> new IllegalArgumentException("No daily sales for: " + date));
   }
+
+  /**
+   * Record a sale for orchestrator demo.
+   * Updates today's metrics.
+   */
+  public void recordSale(String productName, BigDecimal amount) {
+    LocalDate today = LocalDate.now();
+    DailySalesEntity entity = dailySalesRepository.findBySalesDate(today)
+        .orElseGet(() -> DailySalesEntity.builder()
+            .salesDate(today)
+            .ordersCount(0L)
+            .grossAmount(BigDecimal.ZERO)
+            .build());
+
+    entity.setOrdersCount(entity.getOrdersCount() + 1);
+    entity.setGrossAmount(entity.getGrossAmount().add(amount));
+    dailySalesRepository.save(entity);
+  }
 }

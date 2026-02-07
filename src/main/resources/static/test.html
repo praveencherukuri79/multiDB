@@ -3,45 +3,356 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MultiDB + Flowable – Test curls (POST)</title>
+  <title>MultiDB + Flowable – API Test Page</title>
   <style>
-    :root { --bg: #1a1b26; --fg: #a9b1d6; --accent: #7aa2f7; --muted: #565f89; }
+    :root { --bg: #1a1b26; --fg: #a9b1d6; --accent: #7aa2f7; --muted: #565f89; --section: #7dcfff; --success: #9ece6a; --error: #f7768e; }
     * { box-sizing: border-box; }
-    body { font-family: 'JetBrains Mono', 'Fira Code', monospace; background: var(--bg); color: var(--fg); margin: 0; padding: 1.5rem; line-height: 1.5; }
-    h1 { color: var(--accent); font-size: 1.25rem; margin-top: 0; }
-    h2 { color: var(--muted); font-size: 1rem; margin: 1.5rem 0 0.5rem; }
-    pre { background: #16161e; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; border: 1px solid var(--muted); }
+    body { font-family: 'JetBrains Mono', 'Fira Code', monospace; background: var(--bg); color: var(--fg); margin: 0; padding: 1.5rem; line-height: 1.6; }
+    h1 { color: var(--accent); font-size: 1.5rem; margin-top: 0; border-bottom: 2px solid var(--muted); padding-bottom: 0.5rem; }
+    .section-title { color: var(--section); font-size: 1.2rem; margin: 2rem 0 1rem; border-left: 4px solid var(--accent); padding-left: 0.75rem; }
+    h2 { color: var(--fg); font-size: 1rem; margin: 1.5rem 0 0.5rem; font-weight: 600; }
+    .endpoint-wrapper { position: relative; margin: 0.5rem 0; }
+    pre { background: #16161e; padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; border: 1px solid var(--muted); margin: 0; }
     code { color: var(--accent); }
-    .note { color: var(--muted); font-size: 0.9rem; margin-top: 0.5rem; }
+    .note { color: var(--muted); font-size: 0.85rem; margin: 0.25rem 0 0.75rem; font-style: italic; }
+    .highlight { background: #16161e; border-left: 4px solid var(--accent); padding: 1rem; margin: 1rem 0; border-radius: 4px; }
+    .divider { height: 1px; background: var(--muted); margin: 2rem 0; }
+    .try-btn { 
+      position: absolute; 
+      top: 0.5rem; 
+      right: 0.5rem; 
+      background: var(--accent); 
+      color: var(--bg); 
+      border: none; 
+      padding: 0.4rem 0.8rem; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-family: inherit; 
+      font-size: 0.8rem;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .try-btn:hover { background: #7dcfff; transform: translateY(-1px); }
+    .try-btn:active { transform: translateY(0); }
+    .try-btn:disabled { background: var(--muted); cursor: not-allowed; }
+    .response-container { 
+      background: #16161e; 
+      border: 1px solid var(--muted); 
+      border-radius: 6px; 
+      padding: 1rem; 
+      margin: 0.5rem 0; 
+      display: none;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .response-container.show { display: block; }
+    .response-status { 
+      font-weight: bold; 
+      margin-bottom: 0.5rem;
+    }
+    .response-status.success { color: var(--success); }
+    .response-status.error { color: var(--error); }
+    .response-body { 
+      font-size: 0.85rem; 
+      white-space: pre-wrap; 
+      word-break: break-word;
+    }
   </style>
+  <script>
+    async function tryEndpoint(btnId, responseId, method, url, body = null) {
+      const btn = document.getElementById(btnId);
+      const responseDiv = document.getElementById(responseId);
+      
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      responseDiv.innerHTML = '<div class="response-status">Sending request...</div>';
+      responseDiv.classList.add('show');
+      
+      try {
+        const options = {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        };
+        
+        if (body) {
+          options.body = JSON.stringify(body);
+        }
+        
+        const response = await fetch(url, options);
+        const contentType = response.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          data = await response.text();
+        }
+        
+        const statusClass = response.ok ? 'success' : 'error';
+        const statusText = response.ok ? '✓' : '✗';
+        
+        responseDiv.innerHTML = `
+          <div class="response-status ${statusClass}">
+            ${statusText} ${response.status} ${response.statusText}
+          </div>
+          <div class="response-body">${JSON.stringify(data, null, 2)}</div>
+        `;
+        
+      } catch (error) {
+        responseDiv.innerHTML = `
+          <div class="response-status error">✗ Error</div>
+          <div class="response-body">${error.message}</div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Try';
+      }
+    }
+  </script>
 </head>
 <body>
-  <h1>MultiDB + Flowable – POST test curls</h1>
-  <p class="note">Base URL: <code>http://localhost:8080</code>. Run these after starting the app.</p>
+  <h1>🚀 MultiDB + Flowable – API Test Page</h1>
+  <p class="note">Base URL: <code>http://localhost:8080</code> | Start the app first: <code>mvn spring-boot:run</code></p>
 
-  <h2>1. Primary DB – Create order (POST)</h2>
-  <pre>curl -X POST http://localhost:8080/api/orders \
+  <div class="highlight">
+    <strong>💡 Recommended:</strong> Try the <strong>Orchestrator Pattern</strong> endpoints first to see multi-database coordination in action!
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- ORCHESTRATOR PATTERN - Multi-DB Workflows -->
+  <!-- ============================================================ -->
+  <div class="section-title">🎯 Orchestrator Pattern (Multi-DB Workflows)</div>
+  <p class="note">These endpoints coordinate operations across Primary, Audit, and Reporting databases. Each call triggers 3 separate transactions.</p>
+
+  <h2>1. Place Order (Eventual Consistency)</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-orchestrator-orders-post" 
+            onclick="tryEndpoint('btn-api-orchestrator-orders-post', 'response-api-orchestrator-orders-post', 'POST', '/api/orchestrator/orders', {customerName: 'John Doe', productName: 'Laptop', amount: 1299.99})">
+      Try
+    </button>
+    <pre>curl -X POST http://localhost:8080/api/orchestrator/orders \
   -H "Content-Type: application/json" \
-  -d "{\"orderNo\":\"ORD-001\",\"customerId\":1001,\"totalAmount\":99.50}"</pre>
+  -d '{"customerName":"John Doe","productName":"Laptop","amount":1299.99}'</pre>
+  </div>
+  <div class="response-container" id="response-api-orchestrator-orders-post"></div>
+  <p class="note">✓ Saves order to Primary DB → ✓ Logs to Audit DB → ✓ Updates metrics in Reporting DB</p>
 
-  <h2>2. Reporting DB – Upsert daily sales (POST)</h2>
-  <pre>curl -X POST http://localhost:8080/api/reporting/daily-sales \
+  <h2>2. Place Order with Saga (Compensation)</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-orchestrator-orders-saga-post"
+            onclick="tryEndpoint('btn-api-orchestrator-orders-saga', 'response-api-orchestrator-orders-saga', 'POST', '/api/orchestrator/orders/saga', {customerName:'Jane Smith',productName:'Monitor',amount:499.99})">
+      Try
+    </button>
+    <pre>curl -X POST http://localhost:8080/api/orchestrator/orders/saga \
   -H "Content-Type: application/json" \
-  -d "{\"date\":\"2025-02-05\",\"ordersCount\":42,\"grossAmount\":12500.00}"</pre>
+  -d '{"customerName":"Jane Smith","productName":"Phone","amount":899.99}'</pre>
+  </div>
+  <div class="response-container" id="response-api-orchestrator-orders-saga-post"></div>
+  <p class="note">⚠️ If any step fails, previous steps are automatically compensated (rolled back)</p>
 
-  <h2>3. Audit DB – Write audit event (POST)</h2>
-  <pre>curl -X POST http://localhost:8080/api/audit/events \
+  <h2>3. Get Order Details (Multi-DB Read)</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-orchestrator-orders-1-details"
+            onclick="tryEndpoint('btn-api-orchestrator-orders-1-details', 'response-api-orchestrator-orders-1-details', 'GET', '/api/orchestrator/orders/1/details')">
+      Try
+    </button>
+    <pre>curl http://localhost:8080/api/orchestrator/orders/1/details</pre>
+  </div>
+  <div class="response-container" id="response-api-orchestrator-orders-1-details"></div>
+  <p class="note">Fetches order from Primary DB + audit history from Audit DB in one response</p>
+
+  <h2>4. Get Single Order</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-orchestrator-orders-1"
+            onclick="tryEndpoint('btn-api-orchestrator-orders-1', 'response-api-orchestrator-orders-1', 'GET', '/api/orchestrator/orders/1')">
+      Try
+    </button>
+    <pre>curl http://localhost:8080/api/orchestrator/orders/1</pre>
+  </div>
+  <div class="response-container" id="response-api-orchestrator-orders-1"></div>
+  <p class="note">Simple read from Primary DB only</p>
+
+  <div class="divider"></div>
+
+  <!-- ============================================================ -->
+  <!-- INDIVIDUAL SERVICE ENDPOINTS -->
+  <!-- ============================================================ -->
+  <div class="section-title">📊 Individual Service Endpoints (Direct DB Access)</div>
+  <p class="note">These endpoints interact with a single database directly. No cross-DB coordination.</p>
+
+  <h2>Primary DB – Create Order</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-orders-create"
+            onclick="tryEndpoint('btn-api-orders-create', 'response-api-orders-create', 'POST', '/api/orders', {orderNo:'ORD-001',customerId:1001,totalAmount:99.50})">
+      Try
+    </button>
+    <pre>curl -X POST http://localhost:8080/api/orders \
   -H "Content-Type: application/json" \
-  -d "{\"eventType\":\"ORDER_CREATED\",\"actor\":\"system\",\"subjectId\":\"ORD-001\",\"payloadJson\":\"{}\"}"</pre>
+  -d '{"orderNo":"ORD-001","customerId":1001,"totalAmount":99.50}'</pre>
+  </div>
+  <div class="response-container" id="response-api-orders-create"></div>
+  <p class="note">Direct write to Primary DB only (no audit or reporting)</p>
 
-  <h2>4. Flowable – Deploy process (POST)</h2>
-  <pre>curl -X POST http://localhost:8080/api/flowable/deploy</pre>
+  <h2>Primary DB – Get Order by OrderNo</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-orders-ORD-001"
+            onclick="tryEndpoint('btn-api-orders-ORD-001', 'response-api-orders-ORD-001', 'GET', '/api/orders/ORD-001')">
+      Try
+    </button>
+    <pre>curl http://localhost:8080/api/orders/ORD-001</pre>
+  </div>
+  <div class="response-container" id="response-api-orders-ORD-001"></div>
 
-  <h2>5. Flowable – Start process instance (POST)</h2>
-  <pre>curl -X POST http://localhost:8080/api/flowable/process/start \
+  <h2>Reporting DB – Upsert Daily Sales</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-reporting-daily-sales"
+            onclick="tryEndpoint('btn-api-reporting-daily-sales', 'response-api-reporting-daily-sales', 'POST', '/api/reporting/daily-sales', {date:'2025-02-05',ordersCount:42,grossAmount:12500.00})">
+      Try
+    </button>
+    <pre>curl -X POST http://localhost:8080/api/reporting/daily-sales \
   -H "Content-Type: application/json" \
-  -d "{\"processKey\":\"demoProcess\"}"</pre>
+  -d '{"date":"2025-02-05","ordersCount":42,"grossAmount":12500.00}'</pre>
+  </div>
+  <div class="response-container" id="response-api-reporting-daily-sales"></div>
+  <p class="note">Direct write to Reporting DB only</p>
 
-  <p class="note">GET checks: <code>/api/orders/ORD-001</code>, <code>/api/reporting/daily-sales/2025-02-05</code>, <code>/api/audit/events/system</code>, <code>/api/flowable/deployments</code>, <code>/api/flowable/process/instances</code></p>
+  <h2>Reporting DB – Get Daily Sales</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-reporting-daily-sales-get"
+            onclick="tryEndpoint('btn-api-reporting-daily-sales-get', 'response-api-reporting-daily-sales-get', 'GET', '/api/reporting/daily-sales/2025-02-05')">
+      Try
+    </button>
+    <pre>curl http://localhost:8080/api/reporting/daily-sales/2025-02-05</pre>
+  </div>
+  <div class="response-container" id="response-api-reporting-daily-sales-get"></div>
+
+  <h2>Audit DB – Write Event</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-audit-events"
+            onclick="tryEndpoint('btn-api-audit-events', 'response-api-audit-events', 'POST', '/api/audit/events', {eventType:'ORDER_CREATED',actor:'system',subjectId:'ORD-001',payloadJson:'{}'})">
+      Try
+    </button>
+    <pre>curl -X POST http://localhost:8080/api/audit/events \
+  -H "Content-Type: application/json" \
+  -d '{"eventType":"ORDER_CREATED","actor":"system","subjectId":"ORD-001","payloadJson":"{}"}'</pre>
+  </div>
+  <div class="response-container" id="response-api-audit-events"></div>
+  <p class="note">Direct write to Audit DB only</p>
+
+  <h2>Audit DB – Get Events for Actor</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-audit-events-get"
+            onclick="tryEndpoint('btn-api-audit-events-get', 'response-api-audit-events-get', 'GET', '/api/audit/events/system')">
+      Try
+    </button>
+    <pre>curl http://localhost:8080/api/audit/events/system</pre>
+  </div>
+  <div class="response-container" id="response-api-audit-events-get"></div>
+
+  <div class="divider"></div>
+
+  <!-- ============================================================ -->
+  <!-- FLOWABLE PROCESS ENGINE -->
+  <!-- ============================================================ -->
+  <div class="section-title">🔄 Flowable Process Engine (Uses Primary DB)</div>
+  <p class="note">Flowable shares the Primary database. All process engine tables (ACT_*) are in Primary DB.</p>
+
+  <h2>Deploy Process Definition</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-flowable-deploy"
+            onclick="tryEndpoint('btn-api-flowable-deploy', 'response-api-flowable-deploy', 'POST', '/api/flowable/deploy')">
+      Try
+    </button>
+    <pre>curl -X POST http://localhost:8080/api/flowable/deploy</pre>
+  </div>
+  <div class="response-container" id="response-api-flowable-deploy"></div>
+  <p class="note">Deploys the demo BPMN process to Flowable engine</p>
+
+  <h2>Start Process Instance</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-flowable-process-start"
+            onclick="tryEndpoint('btn-api-flowable-process-start', 'response-api-flowable-process-start', 'POST', '/api/flowable/process/start', {processKey:'demoProcess'})">
+      Try
+    </button>
+    <pre>curl -X POST http://localhost:8080/api/flowable/process/start \
+  -H "Content-Type: application/json" \
+  -d '{"processKey":"demoProcess"}'</pre>
+  </div>
+  <div class="response-container" id="response-api-flowable-process-start"></div>
+  <p class="note">Starts a new process instance</p>
+
+  <h2>List Deployments</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-flowable-deployments"
+            onclick="tryEndpoint('btn-api-flowable-deployments', 'response-api-flowable-deployments', 'GET', '/api/flowable/deployments')">
+      Try
+    </button>
+    <pre>curl http://localhost:8080/api/flowable/deployments</pre>
+  </div>
+  <div class="response-container" id="response-api-flowable-deployments"></div>
+
+  <h2>List Process Instances</h2>
+  <div class="endpoint-wrapper">
+    <button class="try-btn" id="btn-api-flowable-process-instances"
+            onclick="tryEndpoint('btn-api-flowable-process-instances', 'response-api-flowable-process-instances', 'GET', '/api/flowable/process/instances')">
+      Try
+    </button>
+    <pre>curl http://localhost:8080/api/flowable/process/instances</pre>
+  </div>
+  <div class="response-container" id="response-api-flowable-process-instances"></div>
+
+  <div class="divider"></div>
+
+  <!-- ============================================================ -->
+  <!-- COMPARISON TABLE -->
+  <!-- ============================================================ -->
+  <div class="section-title">📋 Endpoint Comparison</div>
+  <div class="highlight">
+    <table style="width: 100%; color: var(--fg); font-size: 0.85rem;">
+      <tr style="color: var(--accent); font-weight: bold;">
+        <td>Type</td>
+        <td>Endpoint Pattern</td>
+        <td>Databases Touched</td>
+        <td>Use Case</td>
+      </tr>
+      <tr>
+        <td style="color: var(--section);">Orchestrator</td>
+        <td><code>/api/orchestrator/*</code></td>
+        <td>Primary + Audit + Reporting</td>
+        <td>Business workflows</td>
+      </tr>
+      <tr>
+        <td style="color: var(--muted);">Individual</td>
+        <td><code>/api/orders/*</code></td>
+        <td>Primary only</td>
+        <td>Direct DB operations</td>
+      </tr>
+      <tr>
+        <td style="color: var(--muted);">Individual</td>
+        <td><code>/api/reporting/*</code></td>
+        <td>Reporting only</td>
+        <td>Analytics updates</td>
+      </tr>
+      <tr>
+        <td style="color: var(--muted);">Individual</td>
+        <td><code>/api/audit/*</code></td>
+        <td>Audit only</td>
+        <td>Audit logging</td>
+      </tr>
+      <tr>
+        <td style="color: var(--accent);">Flowable</td>
+        <td><code>/api/flowable/*</code></td>
+        <td>Primary (ACT_* tables)</td>
+        <td>Process automation</td>
+      </tr>
+    </table>
+  </div>
+
+  <p class="note" style="margin-top: 2rem; text-align: center;">
+    <strong>📖 Documentation:</strong> See <code>ORCHESTRATOR_PATTERN.md</code> for detailed architecture explanation
+  </p>
+
 </body>
 </html>
